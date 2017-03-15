@@ -138,6 +138,10 @@ UPDATE person SET
   anthum=( SELECT count(*) FROM contribution WHERE person=person.id AND writes = 1 )
   WHERE birthyear > 0 AND deathyear IS NULL
 ;
+-- date d’édition après mort de l’auteur principal ?
+UPDATE document SET
+  posthum=( date > deathyear+1 )
+;
       " );
   }
 
@@ -184,6 +188,9 @@ UPDATE person SET
         self::$_rec['contribution'] =  array_fill_keys ( self::$_cols['contribution'], null );
         self::$_rec['contribution']['document'] = self::$_rec['document']['id'];
       }
+      if ( self::$_marc[0] == 110 || self::$_marc[0] == 710 ) {
+        self::$_rec['org'] = array();
+      }
     }
     else if ( $name == "mxc:subfield" ) {
       self::$_marc[1] = $atts['code'];
@@ -217,6 +224,19 @@ UPDATE person SET
       }
       if ( self::$_marc == array( 100, "m" ) || self::$_marc == array( 700, "m" ) ) {
         self::$_rec['person']['given'] = self::$_text;
+      }
+      if ( self::$_marc == array( 110, "3" ) || self::$_marc == array( 710, "3" ) ) {
+        self::$_rec['org']['id'] = self::$_text;
+      }
+      if ( self::$_marc == array( 110, "4" ) || self::$_marc == array( 710, "4" ) ) {
+        self::$_rec['org']['role'] = self::$_text;
+      }
+      if (
+           self::$_marc == array( 110, "a" ) || self::$_marc == array( 710, "a" )
+        || self::$_marc == array( 110, "c" ) || self::$_marc == array( 710, "c" )
+      ) {
+        if (!isset( self::$_rec['org']['name'] ) ) self::$_rec['org']['name']= self::$_text;
+        else self::$_rec['org']['name'] = ", ".self::$_text;
       }
       if ( self::$_marc == array( 245, "a" ) ) self::$_rec['document']['title'] = self::$_text;
       if ( self::$_marc == array( 245, "d" ) ) self::$_rec['document']['type'] = self::$_text;
@@ -294,6 +314,11 @@ UPDATE person SET
         }
         self::$_q['contribution']->execute( array_values( self::$_rec['contribution'] ) );
       }
+      if ( self::$_marc[0] == 110 || self::$_marc[0] == 710 ) {
+        // ajouter à la ligne auteur
+        if ( self::$_rec['document']['byline'] ) self::$_rec['document']['byline'] .= " ; ";
+        self::$_rec['document']['byline'] .= self::$_rec['org']['name'];
+      }
       if ( self::$_marc[0] == 937 ) {
         // il ya des champs 937 sans lien gallica
         if( self::$_rec['gallica']['id'] ) {
@@ -310,7 +335,7 @@ UPDATE person SET
     if ( $name == 'mxc:record' ) {
       // (S. l. n. d.)
       // if ( !self::$_rec['document']['year'] && !self::$_rec['document']['date'] ) print_r(self::$_rec['document']);
-      self::$_rec['document']['bysort'] =  strtr( self::$_rec['document']['byline'], self::$frtr );
+      if ( self::$_rec['document']['byline'] ) self::$_rec['document']['bysort'] =  strtr( self::$_rec['document']['byline'], self::$frtr );
       // 656 notices n'ont pas de version numérisée (vérifié au catalogue BNF)
       if ( self::$_rec['document']['hasgall'] ) {
         self::$_q['document']->execute( array_values( self::$_rec['document'] ) );
