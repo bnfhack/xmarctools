@@ -33,17 +33,8 @@ CREATE TABLE document (
   PRIMARY KEY(id ASC)
 );
 CREATE UNIQUE INDEX document_ark ON document( ark );
-CREATE INDEX document_type ON document( type, lang, date, pages );
-CREATE INDEX document_date ON document( date, lang, type );
-CREATE INDEX document_place ON document( place, type, lang, date, pages );
-CREATE INDEX document_pages ON document( pages, lang, date );
-CREATE INDEX document_pages2 ON document( date, lang, pages  );
-CREATE INDEX document_pages3 ON document( date, type, pages  );
-CREATE INDEX document_posthum ON document( posthum, date, type, pages );
--- pour le graphe de répartition des siècles
-CREATE INDEX document_birthyear ON document( date, type, posthum, birthyear );
--- pour le graphe latin et antiquité
-CREATE INDEX document_birthyear2 ON document( date, type, birthyear, lang );
+CREATE INDEX document_year ON document( year, pages );
+CREATE INDEX document_birthyear ON document( birthyear );
 
 CREATE VIRTUAL TABLE title USING FTS3 (
   -- recherche dans les mots du titres
@@ -77,6 +68,7 @@ CREATE TABLE person (
   note        TEXT, -- un text de note
   writes      BOOLEAN, -- cache, docs>0, efficace dans un index
   docs        INTEGER, -- cache, nombre de documents dont la personne est auteur principal
+  pages       INTEGER, -- cache, nombre de pages dont la personne est auteur principal
   posthum     INTEGER, -- cache, nombre de "docs" attribués après la mort
   anthum      INTEGER, -- cache, nombre de "docs" attribués avant la mort
 
@@ -86,6 +78,7 @@ CREATE TABLE person (
 
 CREATE UNIQUE INDEX person_ark ON person( ark );
 CREATE INDEX person_sort ON person( sort, docs );
+CREATE INDEX person_pages ON person( pages );
 
 CREATE TABLE contribution (
   -- lien d’une personne à un document

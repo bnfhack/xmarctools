@@ -97,7 +97,7 @@ class Xmarc2sql {
       "INSERT INTO contribution (".implode(", ", self::$_cols['contribution'] ).") VALUES (".rtrim(str_repeat("?, ", count( self::$_cols['contribution'] )), ", ").");"
     );
     self::$_q['person'] = self::$_pdo->prepare(
-      "INSERT INTO person (".implode(", ", self::$_cols['person'] ).") VALUES (".rtrim(str_repeat("?, ", count( self::$_cols['person'] )), ", ").");"
+      "INSERT OR REPLACE INTO person (".implode(", ", self::$_cols['person'] ).") VALUES (".rtrim(str_repeat("?, ", count( self::$_cols['person'] )), ", ").");"
     );
     self::$_q['gallica'] = self::$_pdo->prepare(
       "INSERT INTO gallica (".implode(", ", self::$_cols['gallica'] ).") VALUES (".rtrim(str_repeat("?, ", count( self::$_cols['gallica'] )), ", ").");"
@@ -122,6 +122,7 @@ UPDATE person SET
   docs=( SELECT count(*) FROM contribution WHERE person=person.id AND writes = 1 )
 ;
 UPDATE person SET writes=1 WHERE docs > 0;
+
 -- les morts
 UPDATE person SET
   posthum=( SELECT count(*) FROM contribution WHERE person=person.id AND writes = 1 AND date > deathyear+1 ),
@@ -138,9 +139,15 @@ UPDATE person SET
   anthum=( SELECT count(*) FROM contribution WHERE person=person.id AND writes = 1 )
   WHERE birthyear > 0 AND deathyear IS NULL
 ;
+-- nombre de pages
+UPDATE person SET
+  pages=( SELECT sum(document.pages) FROM contribution, document WHERE contribution.document=document.id AND contribution.person = person.id )
+;
+
+
 -- date d’édition après mort de l’auteur principal ?
 UPDATE document SET
-  posthum=( date > deathyear+1 )
+  posthum=( year > deathyear+1 )
 ;
       " );
   }
@@ -244,7 +251,8 @@ UPDATE document SET
       if ( self::$_marc == array( 260, "c" ) ) self::$_rec['document']['publisher'] = self::$_text;
       if ( self::$_marc == array( 260, "d" ) ) {
         self::$_rec['document']['date'] = self::$_text;
-        if ( preg_match( '@(\d{1,4})@', self::$_text, $matches) ) {
+        if ( self::$_rec['document']['year']);
+        else if ( preg_match( '@(\d\d\d\d)@', self::$_text, $matches) ) {
           self::$_rec['document']['year'] = $matches[0];
         }
         else if ( strpos( strtolower( self::$_text ), "s. d." ) !== false || strpos( strtolower(self::$_text), "s.d." ) !== false );
@@ -258,7 +266,7 @@ UPDATE document SET
       }
       if ( self::$_marc == array( 280, "a" ) ) {
         self::$_rec['document']['description'] = self::$_text;
-        preg_match_all( '/([0-9]+)(-[0-9IVXLC]+)? [pf]\./', self::$_text, $matches, PREG_PATTERN_ORDER );
+        preg_match_all( '/([0-9]+)(-[0-9IVXLC]+)? [pf]+\./', self::$_text, $matches, PREG_PATTERN_ORDER );
         if ( count($matches[1]) > 0 ) {
           self::$_rec['document']['pages'] = 0;
           foreach( $matches[1] as $p ) self::$_rec['document']['pages'] += $p;
@@ -289,8 +297,8 @@ UPDATE document SET
     }
     if ( $name == 'mxc:datafield' ) {
       if ( self::$_marc[0] == 100 || self::$_marc[0] == 700 ) {
-        if ( self::$_rec['person']['date'] && strpos(self::$_rec['person']['date'], '.') === false && !self::$_rec['person']['birthyear'] ) {
-          print_r( self::$_rec['person'] );
+        if ( self::$_rec['person']['date'] && strpos(self::$_rec['person']['date'], '.') === false && !self::$_rec['person']['birthyear'] ) { // peu de cas
+          // print_r( self::$_rec['person'] );
         }
         // auteur principal ?
         if ( !self::$_rec['document']['byline'] ) {
@@ -309,7 +317,9 @@ UPDATE document SET
         self::$_rec['person']['sort'] = strtr( self::$_rec['person']['family'].self::$_rec['person']['given'], self::$frtr );
         // record
         self::$_q['perstest']->execute( array( self::$_rec['person']['id'] ) );
-        if ( !self::$_q['perstest']->fetch() ) {
+        $pers = self::$_q['perstest']->fetch();
+        // enregistrer l'auteur collecté si rien, ou si mieux (avec dates)
+        if ( !$pers || (!$pers['date'] && self::$_rec['person']['date']) ) {
           self::$_q['person']->execute( array_values( self::$_rec['person'] ) );
         }
         self::$_q['contribution']->execute( array_values( self::$_rec['contribution'] ) );
