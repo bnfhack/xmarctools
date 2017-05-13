@@ -282,7 +282,8 @@ UPDATE document SET
           self::$_rec['gallica']['ark'] = $matches[1];
           self::$_rec['gallica']['id'] = $matches[2];
         }
-        else if( strrpos( self::$_text, "ark:/12148/btv") === 0); // cartes et plans
+        // cartes et plans ? pas de texte ?
+        else if( strrpos( self::$_text, "ark:/12148/btv") === 0);
         else {
           echo self::$file.' 937$j Lien gallica ? '.self::$_text."\n";
         }
