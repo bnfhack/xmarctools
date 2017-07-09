@@ -30,7 +30,7 @@ CREATE TABLE document (
   note        TEXTE,   -- autres contenus textuels
 
   id          INTEGER, -- identifiant BNF
-  PRIMARY KEY(id ASC)
+  PRIMARY KEY( id ASC )
 );
 CREATE UNIQUE INDEX document_ark ON document( ark );
 CREATE INDEX document_year ON document( year, pages );
@@ -73,7 +73,7 @@ CREATE TABLE person (
   anthum      INTEGER, -- cache, nombre de "docs" attribués avant la mort
 
   id          INTEGER, -- rowid auto
-  PRIMARY KEY(id ASC)
+  PRIMARY KEY( id ASC )
 );
 
 CREATE UNIQUE INDEX person_ark ON person( ark );
@@ -84,11 +84,11 @@ CREATE TABLE contribution (
   -- lien d’une personne à un document
   document     INTEGER REFERENCES document(id), -- lien au document par son rowid
   person       INTEGER REFERENCES person(id), -- lien à une œuvre, par son rowid
-  role         INTEGER, -- nature de la responsabilité
+  role         INTEGER REFERENCES role(id), -- nature de la responsabilité
   writes       BOOLEAN, -- redondant avec le code de rôle, mais efficace
   date         INTEGER, -- redondant avec la date de document, mais nécessaire
   id           INTEGER, -- rowid auto
-  PRIMARY KEY(id ASC)
+  PRIMARY KEY( id ASC )
 );
 CREATE UNIQUE INDEX contribution_document ON contribution( document, person, writes );
 CREATE UNIQUE INDEX contribution_person ON contribution( person, document, writes );
@@ -106,3 +106,12 @@ CREATE TABLE dewey (
 CREATE UNIQUE INDEX dewey_code ON dewey( code );
 CREATE INDEX dewey_label ON dewey( label );
 --CREATE INDEX dewey_parent ON dewey(parent);
+
+CREATE TABLE role (
+  -- Table BNF des rôles http://data.bnf.fr/vocabulary/roles/
+  label        TEXT NOT NULL, -- ! libellé du code
+  creator      BOOLEAN, -- ! rôle majeur
+  url          TEXT, -- ! libellé du code
+  id           INTEGER, -- rowid auto
+  PRIMARY KEY( id ASC )
+)

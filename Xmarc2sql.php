@@ -207,17 +207,22 @@ UPDATE document SET
   private static function _close( $parser, $name )
   {
     if ( $name == 'mxc:subfield' ) {
-      if ( self::$_marc == array( 41, "a" ) ) self::$_rec['document']['lang'] = self::$_text;
+      if ( self::$_marc == array( 41, "a" ) ) {
+        self::$_rec['document']['lang'] = self::$_text;
+      }
       if ( self::$_marc == array( 100, "3" ) || self::$_marc == array( 700, "3" ) ) {
         self::$_rec['person']['id'] = self::$_text;
         self::$_rec['contribution']['person'] = self::$_text;
       }
-      if ( self::$_marc == array( 100, "4" ) || self::$_marc == array( 700, "'3'" ) ) {
+      // <mxc:subfield code="4">0440</mxc:subfield> http://data.bnf.fr/vocabulary/roles/
+      if ( self::$_marc == array( 100, "4" ) || self::$_marc == array( 700, "4" ) ) {
         $role = 0+self::$_text;
         self::$_rec['contribution']['role'] = $role;
         if ( $role == 70 || $role == 71 || $role == 72 || $role == 73 || $role == 980 || $role == 990 ) self::$_rec['contribution']['writes'] = 1;
       }
-      if ( self::$_marc == array( 100, "a" ) || self::$_marc == array( 700, "a" ) ) self::$_rec['person']['family'] = self::$_text;
+      if ( self::$_marc == array( 100, "a" ) || self::$_marc == array( 700, "a" ) ) {
+        self::$_rec['person']['family'] = self::$_text;
+      }
       if ( self::$_marc == array( 100, "d" ) || self::$_marc == array( 700, "d" ) ) {
         self::$_rec['person']['date'] = self::$_text;
         $moins = "";
@@ -245,10 +250,18 @@ UPDATE document SET
         if (!isset( self::$_rec['org']['name'] ) ) self::$_rec['org']['name']= self::$_text;
         else self::$_rec['org']['name'] = ", ".self::$_text;
       }
-      if ( self::$_marc == array( 245, "a" ) ) self::$_rec['document']['title'] = self::$_text;
-      if ( self::$_marc == array( 245, "d" ) ) self::$_rec['document']['type'] = self::$_text;
-      if ( self::$_marc == array( 260, "a" ) ) self::$_rec['document']['place'] = self::$_text;
-      if ( self::$_marc == array( 260, "c" ) ) self::$_rec['document']['publisher'] = self::$_text;
+      if ( self::$_marc == array( 245, "a" ) ) {
+        self::$_rec['document']['title'] = self::$_text;
+      }
+      if ( self::$_marc == array( 245, "d" ) ) {
+        self::$_rec['document']['type'] = self::$_text;
+      }
+      if ( self::$_marc == array( 260, "a" ) ) {
+        self::$_rec['document']['place'] = self::$_text;
+      }
+      if ( self::$_marc == array( 260, "c" ) ) {
+        self::$_rec['document']['publisher'] = self::$_text;
+      }
       if ( self::$_marc == array( 260, "d" ) ) {
         self::$_rec['document']['date'] = self::$_text;
         if ( self::$_rec['document']['year']);
@@ -323,7 +336,30 @@ UPDATE document SET
         if ( !$pers || (!$pers['date'] && self::$_rec['person']['date']) ) {
           self::$_q['person']->execute( array_values( self::$_rec['person'] ) );
         }
-        self::$_q['contribution']->execute( array_values( self::$_rec['contribution'] ) );
+        try {
+          self::$_q['contribution']->execute( array_values( self::$_rec['contribution'] ) );
+        }
+        catch ( Exception $e ) {
+          /* Doublon d’auteur
+// ark:/12148/cb31495695f
+<mxc:datafield tag="100" ind1=" " ind2=" ">
+  <mxc:subfield code="3">10656495</mxc:subfield>
+  <mxc:subfield code="w">0  b</mxc:subfield>
+  <mxc:subfield code="a">Trigant Gautier</mxc:subfield>
+  <mxc:subfield code="m">Jean-Pierre</mxc:subfield>
+  <mxc:subfield code="d">1766-1844</mxc:subfield>
+  <mxc:subfield code="4">0070</mxc:subfield>
+</mxc:datafield>
+<mxc:datafield tag="700" ind1=" " ind2=" ">
+  <mxc:subfield code="3">10656495</mxc:subfield>
+  <mxc:subfield code="w">0  b</mxc:subfield>
+  <mxc:subfield code="a">Trigant Gautier</mxc:subfield>
+  <mxc:subfield code="m">Jean-Pierre</mxc:subfield>
+  <mxc:subfield code="d">1766-1844</mxc:subfield>
+  <mxc:subfield code="4">0070</mxc:subfield>
+</mxc:datafield>
+          */
+        }
       }
       if ( self::$_marc[0] == 110 || self::$_marc[0] == 710 ) {
         // ajouter à la ligne auteur
@@ -377,6 +413,8 @@ UPDATE document SET
       self::$_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );
       @chmod($sqlfile, 0775);
       self::$_pdo->exec( file_get_contents( dirname(__FILE__)."/marc.sql" ) );
+      self::$_pdo->exec( file_get_contents( dirname(__FILE__)."/dewey.sql" ) );
+      self::$_pdo->exec( file_get_contents( dirname(__FILE__)."/role.sql" ) );
       return;
     }
     else {
