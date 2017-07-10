@@ -15,6 +15,7 @@ CREATE TABLE document (
   lang        TEXT,    -- 041$a langue principale
   type        TEXT,    -- 245$d
   description TEXT,    -- 280$a description matérielle
+  volumes     INTEGER, -- nombre de volumes gallica
   pages       INTEGER, -- tiré de la description
   size        INTEGER, -- 280$d in- : 8, 4, 12… peu fiable
 

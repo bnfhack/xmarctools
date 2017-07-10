@@ -115,13 +115,19 @@ class Xmarc2sql {
     self::$_pdo->exec( "
 -- date des contributions (optimisation)
 UPDATE contribution SET
-  date=( SELECT year FROM document WHERE document=document.id)
+  date=( SELECT year FROM document WHERE document=document.id )
 ;
 -- nombre de documents
 UPDATE person SET
   docs=( SELECT count(*) FROM contribution WHERE person=person.id AND writes = 1 )
 ;
 UPDATE person SET writes=1 WHERE docs > 0;
+
+-- Nombre de volumes Gallica
+UPDATE document SET
+  volumes=( SELECT count(*) FROM gallica WHERE document=document.id )
+;
+
 
 -- les morts
 UPDATE person SET
